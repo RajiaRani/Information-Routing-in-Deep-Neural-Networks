@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capsule Networks — From Basics to Dynamic Routing</title>
+<script>
+MathJax = { tex: {inlineMath: [['\\(','\\)']], displayMath: [['$$','$$']]}, svg:{fontCache:'global'} };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{
+    --navy:#122A4A; --blue:#2E6FB5; --blue2:#5C92CB; --orange:#E27D3A;
+    --green:#2E8B57; --grey:#555F6B; --light:#F2F5F9; --line:#dde5ee;
+    --ink:#1B1E23; --yellow:#F4B41A;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       color:var(--ink);line-height:1.65;background:#fff}
+  header.hero{background:linear-gradient(135deg,#0e2240,#1f4a7a);color:#fff;
+       padding:60px 24px 70px;text-align:center}
+  header.hero h1{font-size:2.4rem;margin:0 0 10px}
+  header.hero p{font-size:1.15rem;color:#bcd2ec;max-width:760px;margin:6px auto}
+  .tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+       padding:4px 12px;border-radius:20px;font-size:.85rem;margin:14px 5px 0}
+  .wrap{max-width:980px;margin:0 auto;padding:0 22px}
+  nav.toc{background:var(--light);border:1px solid var(--line);border-radius:14px;
+       padding:18px 24px;margin:-40px auto 40px;max-width:940px;position:relative;z-index:2;
+       box-shadow:0 10px 30px rgba(18,42,74,.10)}
+  nav.toc h3{margin:0 0 10px;color:var(--navy);font-size:1rem;letter-spacing:.04em;text-transform:uppercase}
+  nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:30px}
+  nav.toc a{color:var(--blue);text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  section{padding:30px 0;border-bottom:1px solid var(--line)}
+  h2{color:var(--navy);font-size:1.7rem;margin:8px 0 6px;display:flex;align-items:center;gap:12px}
+  h2 .num{background:var(--navy);color:#fff;width:38px;height:38px;border-radius:10px;
+       display:inline-flex;align-items:center;justify-content:center;font-size:1.05rem;flex:none}
+  h3{color:var(--blue);margin-top:26px}
+  .lead{font-size:1.12rem;color:#33414f}
+  .card{background:var(--light);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin:18px 0}
+  .card.blue{border-left:5px solid var(--blue)}
+  .card.green{border-left:5px solid var(--green)}
+  .card.orange{border-left:5px solid var(--orange)}
+  .card.key{background:#EAF1DF;border-left:5px solid var(--green)}
+  .card h4{margin:0 0 8px;color:var(--navy)}
+  table{border-collapse:collapse;width:100%;margin:18px 0;font-size:.97rem}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--navy);color:#fff}
+  tr:nth-child(even) td{background:var(--light)}
+  .pill{display:inline-block;padding:2px 9px;border-radius:6px;font-weight:600;font-size:.9em}
+  .pill.b{background:#dceafb;color:#1c4a7a}
+  .pill.g{background:#dff0e6;color:#1e6b3c}
+  .pill.o{background:#fbe6d6;color:#a8521f}
+  code{background:#eef2f7;padding:2px 6px;border-radius:5px;font-size:.9em;color:#b1356b}
+  .demo{background:#fff;border:2px solid var(--line);border-radius:14px;padding:20px;margin:22px 0;
+        box-shadow:0 6px 18px rgba(18,42,74,.06)}
+  .demo h4{margin:0 0 4px;color:var(--navy)}
+  .demo .hint{color:var(--grey);font-size:.9rem;margin-bottom:14px}
+  .btn{background:var(--blue);color:#fff;border:none;padding:9px 18px;border-radius:8px;
+       font-size:.95rem;cursor:pointer;font-weight:600;margin:4px 6px 4px 0}
+  .btn:hover{background:#235a96}
+  .btn.ghost{background:#fff;color:var(--blue);border:1.5px solid var(--blue)}
+  .btn.orange{background:var(--orange)} .btn.orange:hover{background:#c4661f}
+  input[type=range]{width:100%}
+  .flowrow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:16px 0;justify-content:center}
+  .stage{background:var(--blue);color:#fff;border-radius:10px;padding:10px 12px;text-align:center;
+         min-width:120px;flex:1}
+  .stage.g{background:var(--green)} .stage.o{background:var(--orange)} .stage.y{background:var(--yellow);color:#333}
+  .stage small{display:block;opacity:.9;font-size:.78rem;margin-top:3px}
+  .stage .dim{display:block;margin-top:6px;font-style:italic;font-size:.78rem;background:rgba(255,255,255,.18);
+       border-radius:5px;padding:2px}
+  .arrow{align-self:center;color:var(--grey);font-size:1.4rem;font-weight:bold}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}nav.toc ol{columns:1}}
+  .vskey{font-size:.92rem}
+  svg{max-width:100%}
+  .legend{font-size:.85rem;color:var(--grey);margin-top:8px}
+  .footer{padding:34px;text-align:center;color:var(--grey);font-size:.9rem}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .badge{font-size:.8rem;background:var(--navy);color:#fff;border-radius:6px;padding:2px 8px;margin-left:6px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Capsule Networks</h1>
+  <p>From a basic neuron all the way to <b>Dynamic Routing-by-Agreement</b> — with interactive, runnable visualizations.</p>
+  <div>
+    <span class="tag">Scalar → Vector neurons</span>
+    <span class="tag">Squashing</span>
+    <span class="tag">Live routing simulation</span>
+    <span class="tag">MNIST dimensions</span>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#why">Why CNNs aren't enough</a></li>
+    <li><a href="#capsule">What is a capsule?</a></li>
+    <li><a href="#squash">Squashing (the activation)</a></li>
+    <li><a href="#arch">Architecture overview</a></li>
+    <li><a href="#primary">Primary capsules (→ 8-D)</a></li>
+    <li><a href="#predict">Predictions: \(\hat u_{j|i}=W_{ij}u_i\)</a></li>
+    <li><a href="#routing">Dynamic routing (live demo)</a></li>
+    <li><a href="#params">Counting the parameters</a></li>
+    <li><a href="#loss">Loss &amp; classification</a></li>
+    <li><a href="#cheat">One-page cheat sheet</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1 ===================== -->
+<section id="why">
+  <h2><span class="num">1</span> Why CNNs aren't enough</h2>
+  <p class="lead">A CNN is great at saying <i>"a cat is here."</i> But it throws away <b>where</b> and <b>in what pose</b> — and that's the problem capsules fix.</p>
+
+  <h3>Translation <span class="pill o">invariance</span> vs. <span class="pill g">equivariance</span></h3>
+  <table>
+    <tr><th>Property</th><th>What it means</th><th>Who has it</th></tr>
+    <tr><td><b>Invariance</b></td><td>Shift the object → output is unchanged ("still a cat"). The position information is <i>lost</i>.</td><td>CNN + max-pooling</td></tr>
+    <tr><td><b>Equivariance</b></td><td>Shift/rotate the object → the representation <i>changes in step</i>, so pose is preserved.</td><td><b>Capsules</b></td></tr>
+  </table>
+
+  <div class="card orange">
+    <h4>The classic problem</h4>
+    Max-pooling makes a CNN <b>translation-invariant</b>: a face with the mouth above the eyes still fires "face!", because pooling only asks <i>"is the feature present somewhere?"</i> — not <i>"is it in the right place relative to the others?"</i> CNNs also need <b>lots of data</b> to learn every viewpoint, because they don't model pose explicitly.
+  </div>
+  <p>Capsules keep the <b>part–whole spatial relationship</b>: a "mouth" capsule and an "eye" capsule must <i>agree on the pose of the face</i> before the network says "face." That agreement check is the whole point of routing (Section 7).</p>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section id="capsule">
+  <h2><span class="num">2</span> What is a capsule?</h2>
+  <p class="lead">A capsule is a small <b>group of neurons whose output is a vector</b> \(u=(m,\theta)\) — not a single number.</p>
+
+  <div class="grid2">
+    <div class="card blue">
+      <h4>A normal neuron → a scalar</h4>
+      Output = one number from \(f(w\cdot x+b)\). It can only say <b>"how much"</b> of a feature is present. A scalar has no direction, so it cannot describe orientation, thickness, or size.
+    </div>
+    <div class="card green">
+      <h4>A capsule → a vector</h4>
+      <b>Length</b> \(\;\|u\|\in[0,1]\) = probability the entity is present.<br>
+      <b>Direction</b> = the <b>pose</b> (width, height, angle, colour, …).<br>
+      Same conv math — we just <i>group</i> outputs into a vector.
+    </div>
+  </div>
+
+  <div class="demo">
+    <h4>Try it: the capsule as a compass needle</h4>
+    <div class="hint">Drag the sliders. Length = "is it present?"  ·  angle = "what pose?". Rotating the input only rotates the needle — the length (probability) stays — that's <b>equivariance</b>.</div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+      <svg id="capVec" width="260" height="220" viewBox="0 0 260 220"></svg>
+      <div style="flex:1;min-width:220px">
+        <label>Presence (vector length): <b id="mLab">0.80</b></label>
+        <input id="mSlide" type="range" min="0" max="100" value="80"><br><br>
+        <label>Pose (direction θ): <b id="aLab">35°</b></label>
+        <input id="aSlide" type="range" min="0" max="360" value="35">
+        <p class="vskey">Read-out: \(u=(m,\theta)\) → <span class="mono" id="uRead"></span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card key">
+    <b>Existence property:</b> the capsule answers two questions at once — <span class="pill g">(1) is it present?</span> from the length, and <span class="pill b">(2) what does it look like?</span> from the direction. A scalar neuron can only answer the first.
+  </div>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section id="squash">
+  <h2><span class="num">3</span> Squashing — the capsule's activation</h2>
+  <p class="lead">ReLU/sigmoid squashes a <i>number</i>. Squash squashes a <i>vector's length</i> into \([0,1)\) <b>while keeping its direction</b>.</p>
+
+  $$v=\underbrace{\frac{\|s\|^{2}}{1+\|s\|^{2}}}_{\text{shrinks the length} \to [0,1)}\cdot\underbrace{\frac{s}{\|s\|}}_{\text{keeps the direction}}$$
+
+  <table>
+    <tr><th>Case</th><th>What happens</th></tr>
+    <tr><td>\(\|s\|\) large (≫1)</td><td>\(\dfrac{\|s\|^2}{1+\|s\|^2}\to 1\): output length → just under 1 ("definitely present").</td></tr>
+    <tr><td>\(\|s\|\) small (→0)</td><td>factor → 0: output length → 0 ("not present"). If \(s=0\), \(v=0\).</td></tr>
+  </table>
+
+  <div class="demo">
+    <h4>Try it: input length → output length</h4>
+    <div class="hint">Slide the raw length \(\|s\|\). Notice the output never exceeds 1, and direction is untouched.</div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+      <svg id="squashPlot" width="300" height="220" viewBox="0 0 300 220"></svg>
+      <div style="flex:1;min-width:220px">
+        <label>Raw length \(\|s\|\): <b id="sLab">2.00</b></label>
+        <input id="sSlide" type="range" min="0" max="500" value="200">
+        <p class="vskey">Output length \(\|v\| = \dfrac{\|s\|^2}{1+\|s\|^2}\) = <b id="vOut" class="mono">0.800</b></p>
+        <svg id="squashVec" width="240" height="90" viewBox="0 0 240 90"></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section id="arch">
+  <h2><span class="num">4</span> Architecture overview</h2>
+  <p class="lead">The full pipeline for MNIST (\(28\times28\)). Watch the shapes shrink and the capsules appear.</p>
+  <div class="flowrow">
+    <div class="stage y">Input<small>image</small><span class="dim">1×28×28</span></div>
+    <div class="arrow">→</div>
+    <div class="stage">Conv 9×9 + ReLU<small>256 filters, s=1</small><span class="dim">256×20×20</span></div>
+    <div class="arrow">→</div>
+    <div class="stage">Primary Caps<small>Conv 9×9, s=2</small><span class="dim">1152 × 8-D</span></div>
+    <div class="arrow">→</div>
+    <div class="stage g">Digit Caps<small>dynamic routing r=3</small><span class="dim">10 × 16-D</span></div>
+    <div class="arrow">→</div>
+    <div class="stage o">Lengths<small>‖v_j‖</small><span class="dim">10</span></div>
+  </div>
+  <table>
+    <tr><th>Stage</th><th>Operation</th><th>Output shape</th><th>Why</th></tr>
+    <tr><td>Conv1</td><td>Conv 9×9, 256, stride 1 + ReLU</td><td class="mono">256×20×20</td><td>basic edge/stroke detection (\(28-9+1=20\))</td></tr>
+    <tr><td>Primary Caps</td><td>Conv 9×9, 256, stride 2 → reshape</td><td class="mono">1152 × 8-D</td><td>group channels into 8-D vectors (\(\frac{20-9}{2}+1=6\), \(32{\times}6{\times}6=1152\))</td></tr>
+    <tr><td>Digit Caps</td><td>routing-by-agreement (r=3)</td><td class="mono">10 × 16-D</td><td>one 16-D capsule per class</td></tr>
+    <tr><td>Output</td><td>\(\|v_j\|\)</td><td class="mono">10</td><td>length = class probability</td></tr>
+  </table>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section id="primary">
+  <h2><span class="num">5</span> Primary capsules — making 8-D vectors</h2>
+  <p class="lead"><b>Key insight:</b> there's no magic layer. A normal convolution outputs 256 channels; we just <b>group them into 32 sets of 8</b>, and each set of 8 numbers <i>is</i> a capsule.</p>
+
+  <div class="demo">
+    <h4>Watch: 256 channels → 32 capsules of 8-D</h4>
+    <div class="hint">Press play. The 256 conv outputs (top) get sliced into groups of 8 (bottom). Each coloured group at one pixel = one 8-D capsule.</div>
+    <svg id="groupSvg" width="900" height="200" viewBox="0 0 900 200"></svg><br>
+    <button class="btn" onclick="playGroup()">▶ Group the channels</button>
+    <button class="btn ghost" onclick="resetGroup()">Reset</button>
+  </div>
+
+  <div class="card green">
+    <h4>The count</h4>
+    After stride-2 conv the map is \(6\times6\). We chose <b>32 capsule types</b>, each <b>8-D</b> (\(32\times8=256\) channels). So:
+    $$\underbrace{32}_{\text{types}}\times\underbrace{6\times6}_{\text{locations}} = \mathbf{1152}\ \text{primary capsules, each 8-D}$$
+    Then every 8-D vector is passed through <b>squash</b>.
+  </div>
+  <div class="card key">
+    <b>Say it simply:</b> "A convolution gives 256 feature maps; we read every 8 of them at a pixel as one vector. That's the capsule — 8 filter responses stacked into a direction, then squashed."
+  </div>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section id="predict">
+  <h2><span class="num">6</span> Predictions — every part votes for every whole</h2>
+  <p class="lead">Each primary capsule \(i\) predicts each digit capsule \(j\) through a learned transform \(W_{ij}\) (shape \(16\times8\)), turning its 8-D vector into a 16-D <b>vote</b>.</p>
+  $$\hat u_{j|i}=W_{ij}\,u_i\qquad\text{(8-D part}\;\to\;\text{16-D prediction of the whole)}$$
+  <div class="card blue">
+    <h4>What the vote means</h4>
+    \(\hat u_{j|i}\) says: <i>"based on the part I detected (e.g. a curve), if digit \(j\) is here, its full pose should be this 16-D vector."</i> When many parts predict <b>the same pose</b> for a digit, they <b>agree</b> — and that's the signal routing looks for.
+  </div>
+  <p>Total predictions: \(1152 \times 10 = 11{,}520\) vectors, each 16-D.</p>
+</section>
+
+<!-- ===================== 7 ===================== -->
+<section id="routing">
+  <h2><span class="num">7</span> Dynamic Routing-by-Agreement <span class="badge">live demo</span></h2>
+  <p class="lead">This is the heart of the model. Parts <b>vote</b>; we strengthen the connections whose votes <b>agree</b> with the emerging consensus — and repeat 3 times.</p>
+
+  <div class="card">
+    <h4>The algorithm (Sabour et al., 2017)</h4>
+    <table>
+      <tr><th>#</th><th>Step</th><th>Meaning</th></tr>
+      <tr><td>0</td><td>\(b_{ij}\leftarrow 0\)</td><td>start with no preference</td></tr>
+      <tr><td>1</td><td>\(c_{ij}=\mathrm{softmax}_j(b_{ij})\)</td><td>coupling — each part splits its trust over classes, \(\sum_j c_{ij}=1\)</td></tr>
+      <tr><td>2</td><td>\(s_j=\sum_i c_{ij}\,\hat u_{j|i}\)</td><td>weighted sum of votes for class \(j\)</td></tr>
+      <tr><td>3</td><td>\(v_j=\mathrm{squash}(s_j)\)</td><td>the class capsule's current output</td></tr>
+      <tr><td>4</td><td>\(b_{ij}\;{+}{=}\;\hat u_{j|i}\cdot v_j\)</td><td><b>agreement</b>: votes pointing like \(v_j\) get boosted</td></tr>
+    </table>
+    <span class="legend">Repeat steps 1–4 for \(r=3\) iterations. Then \(\|v_j\|\) is the class probability and \(c_{ij}\) is your Visualization-A heatmap.</span>
+  </div>
+
+  <div class="demo">
+    <h4>Run the routing yourself</h4>
+    <div class="hint">5 lower capsules vote for 3 classes (2-D arrows so we can see them). Capsules 1–3 secretly agree on <b>Class A</b>; 4–5 lean to <b>Class B</b>. Press "Next iteration" and watch the couplings sharpen toward agreement. <i>(This runs the real squash + routing math in your browser.)</i></div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <svg id="routeSvg" width="560" height="340" viewBox="0 0 560 340"></svg>
+      <div style="flex:1;min-width:240px">
+        <p><b>Iteration:</b> <span id="iterNum" class="badge">0</span></p>
+        <button class="btn orange" onclick="routeStep()">▶ Next iteration</button>
+        <button class="btn ghost" onclick="routeReset()">Reset</button>
+        <h4 style="margin-top:18px">Coupling \(c_{ij}\)</h4>
+        <div id="cTable"></div>
+        <p class="legend">Bars = how much each lower capsule sends to each class. They start uniform (≈0.33) and commit as agreement builds.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card key">
+    <b>The intuition:</b> it's a small <b>election that runs 3 times</b>. Round by round, parts that vote alike reinforce each other, stray votes fade, and each part commits to the whole it best explains. <b>Attention does this once; routing does it iteratively</b> — the link to your Transformer comparison.
+  </div>
+</section>
+
+<!-- ===================== 8 ===================== -->
+<section id="params">
+  <h2><span class="num">8</span> Counting the parameters</h2>
+  <p class="lead">Two kinds of quantities — don't confuse them:</p>
+  <table>
+    <tr><th>Symbol</th><th>What</th><th>Learned by</th><th>Count (MNIST)</th></tr>
+    <tr><td>\(W_{ij}\)</td><td>transform matrices (16×8 per part–class pair)</td><td><b>backpropagation</b> (fixed after training)</td><td class="mono">8×16×1152×10 = 1,474,560</td></tr>
+    <tr><td>\(c_{ij}\)</td><td>coupling coefficients</td><td><b>routing</b> at run-time (per input, NOT backprop)</td><td class="mono">1152×10 = 11,520 (per image)</td></tr>
+  </table>
+  <div class="card orange">
+    <h4>Why this matters for your project</h4>
+    \(W\) is the <i>static</i> wiring (like any weight matrix). \(c\) is the <i>dynamic</i>, input-dependent part — recomputed for every image. That dynamic \(c\) is exactly what makes this "routing," and it's the direct analogue of attention weights \(\alpha_{ij}\).
+  </div>
+  <p class="legend">Conv1 adds \(256\times(9{\times}9{\times}1+1)=20{,}992\) params; Primary caps adds \(256\times(9{\times}9{\times}256+1)=5{,}308{,}672\).</p>
+</section>
+
+<!-- ===================== 9 ===================== -->
+<section id="loss">
+  <h2><span class="num">9</span> Loss &amp; classification</h2>
+  <div class="grid2">
+    <div class="card blue">
+      <h4>Margin loss (per class \(k\))</h4>
+      $$L_k=T_k\max(0,m^+-\|v_k\|)^2+\lambda(1-T_k)\max(0,\|v_k\|-m^-)^2$$
+      \(T_k=1\) if digit \(k\) is present.  \(m^+=0.9,\ m^-=0.1,\ \lambda=0.5\).<br>
+      <span class="legend">Present class → length pushed above 0.9; absent → below 0.1.</span>
+    </div>
+    <div class="card green">
+      <h4>Reconstruction (regularizer)</h4>
+      A small decoder rebuilds the image from the winning capsule. Adds a tiny MSE term that forces the capsule to encode <b>real pose</b>, not just a label.
+    </div>
+  </div>
+  <div class="card key">
+    <b>Prediction:</b> take the <b>length</b> of each digit capsule, \(\|v_j\|\). Longest wins. No softmax over logits — the geometry <i>is</i> the probability.
+  </div>
+</section>
+
+<!-- ===================== 10 ===================== -->
+<section id="cheat">
+  <h2><span class="num">10</span> One-page cheat sheet</h2>
+  <table>
+    <tr><th>Concept</th><th>In one line</th></tr>
+    <tr><td>Capsule</td><td>vector neuron: <b>length</b> = presence, <b>direction</b> = pose</td></tr>
+    <tr><td>Squash</td><td>shrink length to [0,1), keep direction</td></tr>
+    <tr><td>Primary caps</td><td>conv 256 channels → group into 32×8 → 1152 capsules</td></tr>
+    <tr><td>Prediction</td><td>\(\hat u_{j|i}=W_{ij}u_i\): each part votes for each class (8-D→16-D)</td></tr>
+    <tr><td>Coupling \(c_{ij}\)</td><td>softmax, \(\sum_j c_{ij}=1\); set by <b>routing</b>, not backprop</td></tr>
+    <tr><td>Agreement</td><td>\(b_{ij}{+}{=}\hat u_{j|i}\cdot v_j\): boost votes that match the consensus</td></tr>
+    <tr><td>Routing</td><td>repeat softmax→aggregate→squash→agree, \(r=3\)</td></tr>
+    <tr><td>Classify</td><td>predicted digit = \(\arg\max_j\|v_j\|\)</td></tr>
+    <tr><td>vs. Transformer</td><td>attention = <b>1</b> routing pass with query–key score instead of agreement</td></tr>
+  </table>
+</section>
+
+</div>
+
+<div class="footer">
+  Built for the project <i>“A Unified Study of Information Routing in Deep Neural Networks.”</i><br>
+  Interactive demos run the real squash &amp; routing math in your browser.
+</div>
+
+<script>
+/* ============ helpers ============ */
+const NS="http://www.w3.org/2000/svg";
+function el(p,t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e;}
+function clear(s){while(s.firstChild)s.removeChild(s.firstChild);}
+
+/* ============ 2. capsule vector compass ============ */
+const capVec=document.getElementById('capVec');
+function drawCap(){
+  clear(capVec);
+  const cx=130,cy=120,R=90;
+  el(capVec,'circle',{cx,cy,r:R,fill:'#f6f9fd',stroke:'#dde5ee'});
+  el(capVec,'line',{x1:cx-R,y1:cy,x2:cx+R,y2:cy,stroke:'#cbd6e2'});
+  el(capVec,'line',{x1:cx,y1:cy-R,x2:cx,y2:cy+R,stroke:'#cbd6e2'});
+  const m=+mSlide.value/100, a=+aSlide.value*Math.PI/180;
+  const len=m*R, ex=cx+len*Math.cos(-a), ey=cy+len*Math.sin(-a);
+  el(capVec,'line',{x1:cx,y1:cy,x2:ex,y2:ey,stroke:'#2E8B57','stroke-width':5,'stroke-linecap':'round'});
+  el(capVec,'circle',{cx:ex,cy:ey,r:7,fill:'#E27D3A'});
+  mLab.textContent=m.toFixed(2); aLab.textContent=aSlide.value+'°';
+  uRead.textContent='m='+m.toFixed(2)+'  (P present),  θ='+aSlide.value+'°  (pose)';
+}
+['input'].forEach(ev=>{mSlide.addEventListener(ev,drawCap);aSlide.addEventListener(ev,drawCap);});
+drawCap();
+
+/* ============ 3. squashing ============ */
+const sp=document.getElementById('squashPlot');
+function drawSquashPlot(){
+  clear(sp);
+  const x0=40,y0=180,W=240,H=150;
+  el(sp,'line',{x1:x0,y1:y0,x2:x0+W,y2:y0,stroke:'#999'});
+  el(sp,'line',{x1:x0,y1:y0,x2:x0,y2:y0-H,stroke:'#999'});
+  el(sp,'text',{x:x0+W-6,y:y0+16,'font-size':11,fill:'#555','text-anchor':'end'}).textContent='‖s‖ →';
+  el(sp,'text',{x:x0-6,y:y0-H+4,'font-size':11,fill:'#555','text-anchor':'end'}).textContent='1';
+  el(sp,'text',{x:x0-6,y:y0+4,'font-size':11,fill:'#555','text-anchor':'end'}).textContent='0';
+  // curve y=x^2/(1+x^2), x from 0..5 mapped to width
+  let d='';
+  for(let i=0;i<=100;i++){const x=i/100*5; const y=x*x/(1+x*x);
+    const px=x0+x/5*W, py=y0-y*H; d+=(i?'L':'M')+px+' '+py+' ';}
+  el(sp,'path',{d,fill:'none',stroke:'#2E6FB5','stroke-width':2.5});
+  const x=+sSlide.value/100, y=x*x/(1+x*x);
+  const px=x0+Math.min(x,5)/5*W, py=y0-y*H;
+  el(sp,'line',{x1:px,y1:y0,x2:px,y2:py,stroke:'#E27D3A','stroke-dasharray':'4 3'});
+  el(sp,'line',{x1:x0,y1:py,x2:px,y2:py,stroke:'#E27D3A','stroke-dasharray':'4 3'});
+  el(sp,'circle',{cx:px,cy:py,r:5,fill:'#E27D3A'});
+  sLab.textContent=x.toFixed(2); vOut.textContent=y.toFixed(3);
+  // vector
+  const sv=document.getElementById('squashVec'); clear(sv);
+  el(sv,'text',{x:0,y:20,'font-size':11,fill:'#555'}).textContent='direction kept, length → '+y.toFixed(2);
+  el(sv,'line',{x1:10,y1:60,x2:10+y*200,y2:60,stroke:'#2E8B57','stroke-width':6,'stroke-linecap':'round'});
+  el(sv,'circle',{cx:10+y*200,cy:60,r:6,fill:'#E27D3A'});
+}
+sSlide.addEventListener('input',drawSquashPlot); drawSquashPlot();
+
+/* ============ 5. channel grouping ============ */
+const gs=document.getElementById('groupSvg');
+function drawGroup(grouped){
+  clear(gs);
+  const n=64, bw=11, x0=20, gap=2;
+  el(gs,'text',{x:x0,y:20,'font-size':13,fill:'#122A4A','font-weight':'bold'})
+    .textContent= grouped? '… grouped into 8-D capsules (showing 8 of 32 groups)':'256 conv channels at one pixel (showing 64)';
+  for(let k=0;k<n;k++){
+    const g=Math.floor(k/8);
+    const extra = grouped? g*10 : 0;
+    const x=x0+k*(bw+gap)+extra;
+    const col = grouped? (g%2? '#2E8B57':'#56b07e') : (k%2? '#2E6FB5':'#5C92CB');
+    const r=el(gs,'rect',{x,y:40,width:bw,height:46,rx:2,fill:col,stroke:'#fff'});
+    r.style.transition='all .6s';
+  }
+  if(grouped){
+    for(let g=0;g<8;g++){
+      const x=x0+g*8*(bw+gap)+g*10-3;
+      el(gs,'rect',{x,y:36,width:8*(bw+gap)-1,height:54,rx:4,fill:'none',stroke:'#1B4A7A','stroke-width':2});
+      el(gs,'text',{x:x+8*(bw+gap)/2,y:108,'font-size':10,fill:'#1B4A7A','text-anchor':'middle'}).textContent='cap '+(g+1);
+    }
+  }
+}
+function playGroup(){drawGroup(true);}
+function resetGroup(){drawGroup(false);}
+drawGroup(false);
+
+/* ============ 7. live routing simulation ============ */
+function squash2(s){const n2=s[0]*s[0]+s[1]*s[1];const sc=n2/(1+n2)/Math.sqrt(n2+1e-9);return [s[0]*sc,s[1]*sc];}
+function softmax(arr){const m=Math.max(...arr);const e=arr.map(v=>Math.exp(v-m));const s=e.reduce((a,b)=>a+b,0);return e.map(v=>v/s);}
+// predictions u_hat[i][j] (5 caps, 3 classes), 2-D
+const UH=[
+ [[ 0.9, 0.1],[0.1, 0.4],[-0.3,0.2]],
+ [[ 0.85,0.2],[0.0, 0.5],[-0.2,0.3]],
+ [[ 0.8, 0.0],[0.2, 0.3],[-0.4,0.1]],
+ [[ 0.1, 0.3],[0.9, 0.2],[ 0.2,0.4]],
+ [[ 0.0, 0.4],[0.8, 0.1],[ 0.3,0.3]],
+];
+const NI=UH.length, NJ=3;
+let bij, iter;
+const classNames=['A','B','C'], classCol=['#2E6FB5','#E27D3A','#2E8B57'];
+function routeReset(){bij=UH.map(()=>[0,0,0]);iter=0;renderRoute(null);}
+function routeStep(){
+  // c
+  const c=bij.map(b=>softmax(b));
+  // s_j, v_j
+  const v=[];
+  for(let j=0;j<NJ;j++){let s=[0,0];for(let i=0;i<NI;i++){s[0]+=c[i][j]*UH[i][j][0];s[1]+=c[i][j]*UH[i][j][1];}v.push(squash2(s));}
+  // agreement
+  for(let i=0;i<NI;i++)for(let j=0;j<NJ;j++)bij[i][j]+=UH[i][j][0]*v[j][0]+UH[i][j][1]*v[j][1];
+  iter++; renderRoute({c,v});
+}
+function renderRoute(state){
+  const sv=document.getElementById('routeSvg'); clear(sv);
+  iterNum.textContent=iter;
+  const c = state? state.c : UH.map(()=>[1/3,1/3,1/3]);
+  const v = state? state.v : null;
+  const lx=70, rx=470, topI=40, gapI=58, topJ=90, gapJ=90;
+  // lower capsules
+  for(let i=0;i<NI;i++){
+    const y=topI+i*gapI;
+    el(sv,'rect',{x:lx-40,y:y-14,width:34,height:28,rx:5,fill:'#eef2f7',stroke:'#5C92CB'});
+    el(sv,'text',{x:lx-23,y:y+4,'font-size':11,'text-anchor':'middle',fill:'#1c4a7a'}).textContent='u'+(i+1);
+    for(let j=0;j<NJ;j++){
+      const yj=topJ+j*gapJ;
+      el(sv,'line',{x1:lx,y1:y,x2:rx,y2:yj,stroke:classCol[j],
+        'stroke-width':0.5+c[i][j]*7,'stroke-opacity':0.25+c[i][j]*0.7});
+    }
+  }
+  // class capsules
+  for(let j=0;j<NJ;j++){
+    const yj=topJ+j*gapJ;
+    const present = v? Math.hypot(v[j][0],v[j][1]):0;
+    el(sv,'circle',{cx:rx+18,cy:yj,r:16+present*14,fill:classCol[j],'fill-opacity':0.18,stroke:classCol[j]});
+    el(sv,'text',{x:rx+18,y:yj+4,'font-size':12,'text-anchor':'middle',fill:classCol[j],'font-weight':'bold'}).textContent='Class '+classNames[j];
+    if(v){
+      el(sv,'line',{x1:rx+18,y1:yj,x2:rx+18+v[j][0]*40,y2:yj-v[j][1]*40,stroke:classCol[j],'stroke-width':3});
+      el(sv,'text',{x:rx+18,y:yj+30,'font-size':10,'text-anchor':'middle',fill:'#555'}).textContent='‖v‖='+present.toFixed(2);
+    }
+  }
+  el(sv,'text',{x:lx-23,y:20,'font-size':11,'text-anchor':'middle',fill:'#555'}).textContent='parts';
+  el(sv,'text',{x:rx+18,y:20,'font-size':11,'text-anchor':'middle',fill:'#555'}).textContent='wholes';
+  // coupling bars
+  const ct=document.getElementById('cTable'); ct.innerHTML='';
+  for(let i=0;i<NI;i++){
+    const row=document.createElement('div'); row.style.margin='6px 0';
+    row.innerHTML='<span class="mono" style="font-size:.8rem">u'+(i+1)+'</span> ';
+    for(let j=0;j<NJ;j++){
+      const w=Math.round(c[i][j]*100);
+      row.innerHTML+='<span style="display:inline-block;height:12px;width:'+(w*0.9)+'px;background:'+classCol[j]+
+        ';border-radius:3px;vertical-align:middle;margin-right:2px" title="Class '+classNames[j]+'"></span>';
+    }
+    ct.appendChild(row);
+  }
+}
+routeReset();
+</script>
+</body>
+</html>
