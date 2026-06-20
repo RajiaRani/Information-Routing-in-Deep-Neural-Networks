@@ -35,10 +35,12 @@ accuracy, data efficiency, and noise robustness.
 System A, Capsule Network:
 Input -> Convolution -> Primary Capsules -> Digit Capsules (Dynamic Routing, r=3)
 -> Classification.
+![Capsule Network architecture](info_routing/outputs/capsnet_architecture.png)
 
 System B, Vision Transformer:
 Patch Embedding -> Positional Encoding -> Self-Attention -> MLP ->
 Classification Head.
+![Vision Transformer Architecture](info_routing/outputs/vit.png)
 
 Experiments (run on MNIST and CIFAR-10):
 1. Classification performance (accuracy and training loss).
